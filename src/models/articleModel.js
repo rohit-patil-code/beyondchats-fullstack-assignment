@@ -2,13 +2,17 @@ const pool = require('../config/db');
 
 const createArticle = async({
     title,
+    slug,
     content,
+    excerpt,
     author,
-    published_date,
-    source_url,
+    published_at,
+    image_url,
+    url,
+    source
 }) => {
     const query = `INSERT INTO articles (title, content, author, published_date, source_url) VALUES($1, $2, $3, $4, $5)`;
-    const values = [title, content, author, published_date, source_url];
+    const values = [title, slug, content, excerpt, author, published_at, image_url, url, 'beyondchats'];
 
     const result = await pool.query(query, result);
     return result.rows[0];
@@ -31,10 +35,16 @@ const updateArticle = async(id, data) => {
 
     const query = `UPDATE articles
             SET title = $1,
-                content = $2,
-                author = $3
-            WHERE id = $4`;
-    const values = [title, content, author, id];
+                slug = $2,
+                content = $3,
+                excerpt = $4,
+                author = $5,
+                published_at = $6,
+                image_url = $7,
+                url = $8,
+                source = $9
+            WHERE id = $10`;
+    const values = [title, slug, content, excerpt, author, published_at, image_url, url, 'beyondchats', id];
     const result = await pool.query(query, values);
     return result.rows[0];
 }

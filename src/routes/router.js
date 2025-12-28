@@ -1,4 +1,4 @@
-const express = ('express');
+const express = require('express');
 const router = express.Router();
 
 const {
@@ -7,7 +7,7 @@ const {
     getArticlesById,
     updateArticle,
     deleteArticle
-} = require('../models/articleModel');
+} = require('../controller/articleController');
 
 router.post('/', createArticle);
 router.get('/', getArticles);

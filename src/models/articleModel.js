@@ -44,3 +44,10 @@ const deleteArticle = async(id) => {
     const values = [id];
     const result = await pool.query(query, values);
 }
+
+module.exports = {
+    getArticles,
+    getArticlesById,
+    updateArticle,
+    deleteArticle
+};

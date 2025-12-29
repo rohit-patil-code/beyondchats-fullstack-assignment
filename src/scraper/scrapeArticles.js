@@ -1,7 +1,18 @@
 const axios = require('axios');
 const cheerio = require('cheerio');
+const { Pool } = require('pg');
+require('dotenv').config();
 
 const BASE_URL = 'https://beyondchats.com/blogs/page/';
+
+const PG_POOL = new Pool({
+  host: process.env.DB_HOST,
+  port: parseInt(process.env.DB_PORT),
+  database: process.env.DB_NAME,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  ssl: process.env.NODE_ENV === 'production'
+});
 
 function extractListArticle($, element) {
   const title = $(element).find('h2.entry-title a').text().trim();
@@ -14,7 +25,6 @@ function extractListArticle($, element) {
 
 async function extractFullArticle(url) {
   try {
-    console.log(`🔍 Fetching full content: ${url}`);
     const response = await axios.get(url, {
       headers: { 
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
@@ -23,34 +33,39 @@ async function extractFullArticle(url) {
     });
     const $ = cheerio.load(response.data);
 
+    // Fixed title extraction
+    const title =
+        $('h1.wp-block-post-title').first().text().trim() ||
+        $('meta[property="og:title"]').attr('content') ||
+        null;
 
-    const title = $('h1.entry-title').text().trim() || $('.entry-title').text().trim();
+    
     const content = $('.entry-content').html() || $('.post-content').html() || '';
     const excerpt = $('.entry-excerpt').text().trim() || content.substring(0, 200) + '...';
     
-    // Author extraction
-    const author = $('.author.vcard').text().trim() || 
+    // Fixed author extraction
+    const author = $('.author.vcard .fn').first().text().trim() ||
+                   $('.author.vcard').first().contents().filter(function() { return this.type === 'text'; }).text().trim() ||
                    $('.entry-author').text().trim() || 
-                   $('.author-name').text().trim();
+                   $('.author-name').text().trim() ||
+                   'Unknown';
 
-    // Date extraction
     let publishedAt = null;
     const dateMeta = $('time.published').attr('datetime') || 
-                    $('meta[property="article:published_time"]').attr('content') ||
-                    $('.published').attr('datetime');
+                     $('meta[property="article:published_time"]').attr('content') ||
+                     $('.published').attr('datetime');
     if (dateMeta) {
       publishedAt = new Date(dateMeta).toISOString();
     }
 
-    // Image extraction
     const imageUrl = $('.featured-image img').first().attr('src') || 
-                    $('meta[property="og:image"]').attr('content') ||
-                    $('.wp-post-image').attr('src');
+                     $('meta[property="og:image"]').attr('content') ||
+                     $('.wp-post-image').attr('src');
 
     const fullArticle = {
       title,
       slug: url.split('/blogs/')[1]?.replace('/', ''),
-      content: content ? content.substring(0, 1000) + '...' : null, // Truncate for console
+      content,
       excerpt,
       author,
       publishedAt,
@@ -59,10 +74,46 @@ async function extractFullArticle(url) {
       source: 'beyondchats'
     };
 
-    console.log('📄 Full Article Data:', JSON.stringify(fullArticle, null, 2));
     return fullArticle;
   } catch (error) {
-    console.error(`❌ Failed to scrape ${url}:`, error.message);
+    console.error(`Failed to scrape ${url}:`, error.message);
+    return null;
+  }
+}
+
+async function saveArticleToDB(article) {
+  const client = await PG_POOL.connect();
+  try {
+    const query = `
+      INSERT INTO articles (title, slug, content, excerpt, author, published_at, image_url, url, source)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      ON CONFLICT (slug) DO UPDATE SET
+        content = EXCLUDED.content,
+        excerpt = EXCLUDED.excerpt,
+        author = EXCLUDED.author,
+        published_at = EXCLUDED.published_at,
+        image_url = EXCLUDED.image_url,
+        updated_at = NOW()
+      RETURNING id
+    `;
+    
+    const result = await client.query(query, [
+      article.title,
+      article.slug,
+      article.content,
+      article.excerpt,
+      article.author,
+      article.publishedAt,
+      article.imageUrl,
+      article.url,
+      article.source
+    ]);
+    
+    client.release();
+    return result.rows[0].id;
+  } catch (error) {
+    client.release();
+    console.error(`DB Error for ${article.title}:`, error.message);
     return null;
   }
 }
@@ -71,60 +122,49 @@ async function scrapeOldestFiveArticles() {
   const collected = [];
   let page = 15;
 
-  //Find 5 oldest articles from list pages
-  console.log('Searching for oldest 5 articles\n');
-  
   while (collected.length < 5 && page > 0) {
     const url = `${BASE_URL}${page}/`;
-    console.log(`Scraping list page ${page}`);
-
+    
     try {
       const response = await axios.get(url);
       const $ = cheerio.load(response.data);
       const articles = $('.entry-card').toArray();
 
-      // Reverse order
       for (let i = articles.length - 1; i >= 0; i--) {
         if (collected.length >= 5) break;
         
         const articleMeta = extractListArticle($, articles[i]);
         if (articleMeta.title && articleMeta.link) {
           collected.push(articleMeta);
-          console.log(`Collected: ${articleMeta.title}`);
         }
       }
     } catch (error) {
-      console.log(`Page ${page} failed, trying next..`);
+      // Silent fail
     }
     
     page--;
   }
 
-  console.log('\nFound 5 oldest articles, now fetching full content...\n');
-
-  //Fetch full content for each article
-  const fullArticles = [];
-  for (let i = 0; i < collected.length; i++) {
-    const meta = collected[i];
-    console.log(`\n--- Article ${i + 1}/5 ---\n`);
+  let savedCount = 0;
+  for (const meta of collected) {
     const fullArticle = await extractFullArticle(meta.link);
-    if (fullArticle) {
-      fullArticles.push(fullArticle);
+    if (fullArticle && fullArticle.title && fullArticle.slug) {
+      const articleId = await saveArticleToDB(fullArticle);
+      if (articleId) savedCount++;
     }
   }
 
-  console.log('\n🎉 SCRAPING COMPLETE! 5 Full Articles Ready for Database:');
-  console.log(JSON.stringify(fullArticles, null, 2));
-  
-  return fullArticles;
+  console.log(`✅ Scraping complete! ${savedCount}/5 articles saved to database`);
+  await PG_POOL.end();
+  return savedCount;
 }
 
-// Run scraper
 (async () => {
   try {
-    const articles = await scrapeOldestFiveArticles();
-    console.log(`\nSuccessfully scraped ${articles.length} full articles!`);
+    const saved = await scrapeOldestFiveArticles();
+    process.exit(saved > 0 ? 0 : 1);
   } catch (err) {
     console.error('Scraping failed:', err.message);
+    process.exit(1);
   }
 })();

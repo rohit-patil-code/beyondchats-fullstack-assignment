@@ -9,7 +9,7 @@ const createArticle = async(req, res) => {
             data: article
         });
     }catch(err){
-        console(`Error while creating article with error message: ${err.message}`);
+        console.log(`Error while creating article with error message: ${err.message}`);
     }
 }
 
@@ -22,7 +22,7 @@ const getArticles = async(req, res) => {
             data: article
         });
     }catch(err){
-        console.log(`Error while creating article with error message: ${err.message}`);
+        console.log(`Error while fetching article with error message: ${err.message}`);
     }
 }
 
@@ -35,7 +35,7 @@ const getArticlesById = async(req, res) => {
             data: article
         });
     }catch(err){
-        console(`Error while creating article with error message: ${err.message}`);
+        console.log(`Error while fetching articles with id with error message: ${err.message}`);
     }
 }
 
@@ -48,7 +48,7 @@ const updateArticle = async(req, res) => {
             data: article
         });
     }catch(err){
-        console(`Error while creating article with error message: ${err.message}`);
+        console.log(`Error while updating article with error message: ${err.message}`);
     }
 }
 
@@ -61,7 +61,7 @@ const deleteArticle = async(req, res) => {
             data: article
         });
     }catch(err){
-        console(`Error while creating article with error message: ${err.message}`);
+        console.log(`Error while deleting article with error message: ${err.message}`);
     }
 }
 

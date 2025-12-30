@@ -202,6 +202,7 @@ const ArticleDetail = () => {
           {/* Article Content - Render HTML */}
           <div
             className="prose prose-lg max-w-none article-content"
+            style={{ overflowX: 'hidden', maxWidth: '100%' }}
             dangerouslySetInnerHTML={{ __html: currentArticle.content || '' }}
           />
 
@@ -245,6 +246,40 @@ const ArticleDetail = () => {
           height: auto;
           border-radius: 0.5rem;
           margin: 1.5em 0;
+        }
+        .article-content iframe,
+        .article-content embed,
+        .article-content video,
+        .article-content object {
+          max-width: 100%;
+          width: 100%;
+          aspect-ratio: 16 / 9;
+          height: auto;
+          display: block;
+          border-radius: 0.5rem;
+          margin: 1.5em 0;
+        }
+        .article-content figure,
+        .article-content .wp-block-embed,
+        .article-content .wp-block-video {
+          max-width: 100%;
+          width: 100%;
+          overflow: hidden;
+          margin: 1.5em 0;
+        }
+        .article-content figure iframe,
+        .article-content figure embed,
+        .article-content figure video {
+          max-width: 100%;
+          width: 100%;
+          aspect-ratio: 16 / 9;
+          height: auto;
+        }
+        /* Ensure containers for video embeds maintain aspect ratio */
+        .article-content figure,
+        .article-content .wp-block-embed,
+        .article-content .wp-block-video {
+          position: relative;
         }
         .article-content a {
           color: #2563eb;

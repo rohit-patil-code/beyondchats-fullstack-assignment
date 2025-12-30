@@ -133,6 +133,14 @@ const ArticleDetail = () => {
   // Determine which article to display
   const currentArticle = showUpdated && updatedArticle ? updatedArticle : originalArticle;
 
+  // Function to remove only SVGs from HTML content (keep img tags)
+  const removeSvgsFromContent = (html) => {
+    if (!html) return '';
+    // Remove svg tags only
+    let cleaned = html.replace(/<svg[^>]*>.*?<\/svg>/gs, '');
+    return cleaned;
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -203,7 +211,7 @@ const ArticleDetail = () => {
           <div
             className="prose prose-lg max-w-none article-content"
             style={{ overflowX: 'hidden', maxWidth: '100%' }}
-            dangerouslySetInnerHTML={{ __html: currentArticle.content || '' }}
+            dangerouslySetInnerHTML={{ __html: removeSvgsFromContent(currentArticle.content || '') }}
           />
 
           {/* References Section - Only show for updated version */}

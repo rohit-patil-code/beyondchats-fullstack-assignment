@@ -286,10 +286,12 @@ All endpoints return JSON responses. The frontend uses `GET /api/articles` to fe
 
 ## Screenshots
 
-[Screenshots will be added here]
 - Homepage showing Original and AI-Updated article sections
+<img width="1916" height="1030" alt="image" src="https://github.com/user-attachments/assets/af8095cc-f3a0-427a-9cc3-fe027d34d35e" />
+
 - Article detail view with full content
-- Badge indicators for article versions
+- <img width="1918" height="1027" alt="image" src="https://github.com/user-attachments/assets/93f239d8-cb20-42a0-ab8c-e6ac8bc28faf" />
+
 
 ## Future Improvements
 
@@ -303,8 +305,4 @@ All endpoints return JSON responses. The frontend uses `GET /api/articles` to fe
 - Add analytics and tracking for article views
 - Implement automated Phase 2 scheduling
 - Add unit and integration tests
-
-## License
-
-ISC
 
